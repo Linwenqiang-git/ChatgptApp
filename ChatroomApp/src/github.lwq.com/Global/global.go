@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	Chatgpt_token = "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"
+	Chatgpt_token = "your api key"
 	CtClient      *CompletionClient
 	Ctx           context.Context
 )
