@@ -13,7 +13,7 @@ class Embedding:
         ENCODING = "gpt2"  # encoding for text-davinci-003
         encoding = tiktoken.get_encoding(ENCODING)        
         self.__separator_len = len(encoding.encode(self.__separator))
-        openai.api_key = "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"
+        openai.api_key = "your api key"
 
     #内部方法
     # 返回两个想向量之间的相似度
