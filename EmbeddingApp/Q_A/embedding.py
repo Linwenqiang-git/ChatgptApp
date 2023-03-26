@@ -15,7 +15,7 @@ class Embedding:
     def __init__(self):
         ENCODING = "gpt2"  # encoding for text-davinci-003
         encoding = tiktoken.get_encoding(ENCODING)        
-        self.__separator_len = len(encoding.encode(self.__separator))
+        self.__separator_len = len(encoding.encode(self.__separator)
         self.__setOpenaiKey()
 
     #内部方法
@@ -96,5 +96,3 @@ class Embedding:
         #基于嵌入上下文来回答问题，如果上下文不理解，则回答 “我不知道”
         header = """Answer the question as truthfully as possible using the provided context,and if the answer is not contained within the text below,say "我不知道."\n\nContext:\n"""
         return header + ''.join(chosen_sections) + "\n\n Q: " + question + "\n A:"   
-    
-    
