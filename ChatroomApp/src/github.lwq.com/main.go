@@ -16,7 +16,8 @@ import (
 )
 
 func createOpenAiClient() *openai.Client {
-	client := openai.NewClient(Chatgpt_token)
+	print(Configuration.OpenaiSetting.GetSetting())
+	client := openai.NewClient(Configuration.OpenaiSetting.GetSetting())
 	return client
 }
 

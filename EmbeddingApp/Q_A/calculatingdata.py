@@ -11,9 +11,9 @@ class CalculatingData:
         pass
 
     # 为原始文件计算token
-    def build_tokens_for_source(self):
+    def build_tokens_for_source(self,columns:list[str]):
         tokensObj = Tokens()
-        tokensObj.generate_tokens(self.__source_file_name)
+        tokensObj.generate_tokens(self.__source_file_name,columns)
         pass
 
     #将初始文件载入DataFrame
@@ -21,19 +21,24 @@ class CalculatingData:
         return pd.read_csv(self.__source_file_name)
 
     #生成嵌入向量文件
-    def generate_embedding_vector_file(self,embedding:Embedding,df:pd.DataFrame):   
-        df = df.set_index(["title", "heading"])
+    def generate_embedding_vector_file(self,embedding:Embedding,df:pd.DataFrame,embedding_columns:list[str]):   
+        df = df.set_index(embedding_columns)
         source_vector = embedding.compute_source_doc_embedding(df)
         #将计算结果写进新的文件
-        self.__generate_embedding_vector_file(source_vector)    
+        self.__generate_embedding_vector_file(source_vector)   
+
+     #计算提tokens数量
+    def calculate_prompt_tokens(serlf,prompt:str):
+        
+        pass 
 
     #生成嵌入向量文件
     def __generate_embedding_vector_file(self,data:dict[tuple[str, str], list[float]]):    
         #固定csv文件头部为title、heading
-        dic = {'title':[],'heading':[]}    
+        dic = {'small_class':[],'title':[]}    
         for k,vector in data.items():                
-            dic['title'].append(k[0])
-            dic['heading'].append('avoid nan')
+            dic['small_class'].append(k[0])
+            dic['title'].append(k[1] if k[1] != None else '')
             index = 0
             for v in vector:
                 if str(index) in dic:
