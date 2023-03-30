@@ -15,7 +15,7 @@ class Embedding:
     def __init__(self):
         ENCODING = "gpt2"  # encoding for text-davinci-003
         encoding = tiktoken.get_encoding(ENCODING)        
-        self.__separator_len = len(encoding.encode(self.__separator)
+        self.__separator_len = len(encoding.encode(self.__separator))
         self.__setOpenaiKey()
 
     #内部方法
@@ -24,7 +24,7 @@ class Embedding:
         self.__config_file.read("./././configurations.ini")        
         openai.api_key = self.__config_file['OpenaiSettings']['api_key']
         
-    # 返回两个想向量之间的相似度
+    # 返回两个向量之间的相似度
     def __vector_similarity(self,x: list[float], y: list[float]) -> float:    
         return np.dot(np.array(x), np.array(y))
     
