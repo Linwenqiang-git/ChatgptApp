@@ -25,7 +25,8 @@ var upgrader = websocket.Upgrader{
 func (server *Server) handler(w http.ResponseWriter, r *http.Request) {
 	wsConn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
+		log.Println("Upgrade error：", err)
+		return
 	}
 	server.createNewUser(wsConn)
 }

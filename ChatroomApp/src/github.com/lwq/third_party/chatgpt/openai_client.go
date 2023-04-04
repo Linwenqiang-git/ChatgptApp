@@ -10,7 +10,7 @@ type OpenAiClient struct {
 }
 
 func ProvideOpenAiClient(configure Configure) (OpenAiClient, error) {
-	apiKey := configure.OpenaiSetting.GetSetting()
+	apiKey := configure.OpenaiSetting.GetOpenaiSetting()
 	openai_client := openai.NewClient(apiKey)
 	client := OpenAiClient{
 		Client: openai_client,
