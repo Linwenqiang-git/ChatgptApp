@@ -2,8 +2,11 @@ package main
 
 import (
 	"bufio"
+	"encoding/base64"
 	"flag"
+	"fmt"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"sync"
@@ -20,23 +23,15 @@ var lastHealthTime time.Time
 func main() {
 	flag.Parse()
 	log.SetFlags(0)
-
-	serviceUrl := url.URL{Scheme: "ws", Host: *addr, Path: "/openai"}
-	conn, _, err := websocket.DefaultDialer.Dial(serviceUrl.String(), nil)
+	conn, err := login()
 	if err != nil {
-		log.Fatal("dial:", err)
+		log.Print("login error", err)
 		return
 	}
-	conn.SetPongHandler(func(appdata string) error {
-		lastHealthTime = time.Now()
-		//log.Printf("recv pong")
-		return nil
-	})
 	defer func() {
-		log.Printf("exit from %s", serviceUrl.String())
+		log.Printf("exit from localhost:8899,bye...")
 		conn.Close()
 	}()
-	log.Printf("connecting to %s", serviceUrl.String())
 	// 创建一个 WaitGroup 对象，用于协调 goroutine 同步
 	lastHealthTime = time.Now()
 	var wg sync.WaitGroup
@@ -52,14 +47,41 @@ func main() {
 	releaseAllChannel()
 }
 
+func login() (*websocket.Conn, error) {
+	log.Print("Please your account:")
+	input := bufio.NewScanner(os.Stdin)
+	input.Scan()
+	username := input.Text()
+	password := ""
+	auth := fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", username, password))))
+	headers := http.Header{}
+	headers.Set("Authorization", auth)
+	serviceUrl := url.URL{Scheme: "ws", Host: *addr, Path: "/openai"}
+	conn, _, err := websocket.DefaultDialer.Dial(serviceUrl.String(), headers)
+	if err != nil {
+		log.Fatal("dial:", err)
+		return nil, err
+	}
+	conn.SetPongHandler(func(appdata string) error {
+		lastHealthTime = time.Now()
+		//log.Printf("recv pong")
+		return nil
+	})
+	return conn, nil
+}
+
 func releaseAllChannel() {
-	_, ok := <-clientDone
-	if ok {
+	select {
+	case <-clientDone:
+	default:
+		log.Print("release clientDone")
 		close(clientDone)
 	}
-	_, ok = <-serverDone
-	if ok {
-		close(serverDone)
+	select {
+	case <-serverDone:
+	default:
+		log.Print("release serverDone")
+		close(clientDone)
 	}
 }
 
@@ -67,18 +89,21 @@ func releaseAllChannel() {
 func receiveMsg(conn *websocket.Conn, wg *sync.WaitGroup) {
 	defer close(serverDone)
 	defer wg.Done()
+	retryCount := 0
 	for {
 		messageType, message, err := conn.ReadMessage()
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) && retryCount < 3 {
 				log.Println("Conn has been closed", err)
 				// 等待一段时间后重试
 				time.Sleep(time.Second * 3)
+				retryCount++
 				continue
 			}
 			log.Println("chatgpt error:", err)
 			return
 		}
+		retryCount = 0
 		switch messageType {
 		case websocket.TextMessage:
 			// 处理文本消息
@@ -124,8 +149,15 @@ func healthCheck(conn *websocket.Conn, wg *sync.WaitGroup) {
 func readInput(conn *websocket.Conn) {
 	input := bufio.NewScanner(os.Stdin)
 	for input.Scan() {
-
 		line := input.Text()
+		select {
+		case <-clientDone:
+			return
+		case <-serverDone:
+			return
+		default:
+			// 继续执行
+		}
 		// 输入bye时 结束
 		if line == "bye" {
 			close(clientDone)

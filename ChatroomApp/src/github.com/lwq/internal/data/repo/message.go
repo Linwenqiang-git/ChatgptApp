@@ -1,8 +1,11 @@
 package repo
 
 import (
+	"errors"
+
 	. "github.com/lwq/internal/data"
 	. "github.com/lwq/internal/data/dto"
+	"gorm.io/gorm"
 
 	. "github.com/lwq/internal/data/entity"
 )
@@ -25,13 +28,18 @@ func (m MessageRepo) CreateUser(user User) (int, error) {
 	return int(tx.RowsAffected), nil
 }
 
-func (m MessageRepo) GetUser(userName string) (User, error) {
+func (m MessageRepo) GetUser(userName string) (*User, error) {
 	var user User
-	tx := m.dbContext.GetDb().Table(User.TableName(user)).Where("Name = ?", userName).First(&user)
-	if tx.Error != nil {
-		return User{}, tx.Error
+	if err := m.dbContext.GetDb().Table(User.TableName(user)).Where("Name = ?", userName).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		} else {
+			return nil, err
+		}
+		return nil, err
 	}
-	return user, nil
+
+	return &user, nil
 }
 
 func (m MessageRepo) InserUserMessage(records []ChatRecord) (int, error) {

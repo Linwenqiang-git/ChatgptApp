@@ -18,9 +18,9 @@ type User struct {
 	UserOfflineEvent *Event
 }
 
-func CreatUser(conn *websocket.Conn) *User {
+func CreatUser(conn *websocket.Conn, account string) *User {
 	var user = &User{
-		account:          "Mr.zhang",
+		account:          account,
 		addr:             conn.RemoteAddr().String(),
 		wsConn:           conn,
 		sendChan:         make(chan []byte),
@@ -30,10 +30,6 @@ func CreatUser(conn *websocket.Conn) *User {
 	return user
 }
 
-// 账号登录
-func Login(userName string) {
-
-}
 func (user *User) GetUserAddr() string {
 	return user.addr
 }
@@ -60,13 +56,13 @@ func (user *User) recvMessage() {
 		case websocket.TextMessage:
 			// 处理文本消息
 			//chat with gpt
-			log.Printf("Recv [%s] text msg: %s\n", user.addr, string(byteMsg))
+			log.Printf("Recv [%s] text msg: %s\n", user.account, string(byteMsg))
 			go user.chatWithGpt(user.account, string(byteMsg))
 		case websocket.BinaryMessage:
 			// 处理二进制消息
-			log.Printf("Recv [%s] binary msg: %v\n", user.addr, byteMsg)
+			log.Printf("Recv [%s] binary msg: %v\n", user.account, byteMsg)
 		default:
-			log.Printf("Recv [%s] unknown message type: %d\n", user.addr, messageType)
+			log.Printf("Recv [%s] unknown message type: %d\n", user.account, messageType)
 		}
 	}
 }
@@ -90,7 +86,7 @@ func (user *User) sendMessage() {
 				log.Println("Send Msg Error：", err)
 				return
 			}
-			log.Printf("Send [%s] msg:%s", user.addr, buf)
+			log.Printf("Send [%s] msg:%s", user.account, buf)
 		case <-user.healthCheckChan:
 			err := user.wsConn.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(time.Second))
 			if err != nil {
@@ -106,14 +102,15 @@ func (user *User) healthCheck(appdata string) error {
 }
 
 func (user *User) Online() {
-	log.Printf("[%s] Online", user.addr)
+	log.Printf("[%s] Online", user.account)
 	user.wsConn.SetPingHandler(user.healthCheck)
 	go user.recvMessage()
 	go user.sendMessage()
+	user.sendChan <- []byte("Welecom " + user.account + "!")
 }
 
 func (user *User) offline() {
-	log.Printf("[%s] OffLine", user.addr)
+	log.Printf("[%s] OffLine", user.account)
 	user.wsConn.Close()
 	//publish offline event
 	user.UserOfflineEvent.Invoke(user)

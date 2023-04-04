@@ -98,9 +98,6 @@ func (c *ChatCompletionClient) CreateChatCompletionWithContext(ctx context.Conte
 	if c.userContext == nil {
 		c.userContext = make(map[string][]openai.ChatCompletionMessage)
 	}
-	if userName == "" {
-		userName = "Mr.zhang"
-	}
 	historyMessages, ok := c.userContext[userName]
 	if !ok {
 		c.userContext[userName] = []openai.ChatCompletionMessage{}
