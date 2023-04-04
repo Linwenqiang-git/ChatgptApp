@@ -36,9 +36,7 @@ func (m MessageRepo) GetUser(userName string) (*User, error) {
 		} else {
 			return nil, err
 		}
-		return nil, err
 	}
-
 	return &user, nil
 }
 
