@@ -3,11 +3,7 @@ import sys
 import openai
 import configparser
 
-from chat import call_continuous_dialogue
-root_path = os.path.abspath(__file__)
-root_path = '/'.join(root_path.split('/')[:-2])
-sys.path.append(root_path)
-from API.python.completion import CompletionCient
+from ...API.python.completion import CompletionCient
 from embedding import Embedding
 from calculatingdata import CalculatingData
 

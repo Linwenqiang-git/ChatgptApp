@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -22,26 +23,26 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
-func (server *Server) handler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 	auth := r.Header.Get("Authorization")
 	if auth == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	account, _, err := server.parseBasicAuth(auth)
+	account, _, _ := s.parseBasicAuth(auth)
 	wsConn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("Upgrade error：", err)
 		return
 	}
-	var user = CreatUser(wsConn, account)
+	var user = NewUser(wsConn, account)
 	user.Online()
-	server.addOnlineUserMap(user)
+	s.addOnlineUserMap(user)
 	//注册User下线事件
-	user.UserOfflineEvent.AddEventHandler("UserOffline", server.deleteOnlineUserMap)
+	user.UserOfflineEvent.AddEventHandler("UserOffline", s.deleteOnlineUserMap)
 }
 
-func (server *Server) parseBasicAuth(auth string) (string, string, error) {
+func (s *Server) parseBasicAuth(auth string) (string, string, error) {
 	if !strings.HasPrefix(auth, "Basic ") {
 		return "", "", fmt.Errorf("Invalid authorization header")
 	}
@@ -56,20 +57,20 @@ func (server *Server) parseBasicAuth(auth string) (string, string, error) {
 	return pair[0], pair[1], nil
 }
 
-func (server *Server) addOnlineUserMap(user *User) {
-	server.userMapLock.Lock()
-	server.onlineUserMap[user.GetUserAddr()] = user
-	server.userMapLock.Unlock()
+func (s *Server) addOnlineUserMap(user *User) {
+	s.userMapLock.Lock()
+	s.onlineUserMap[user.GetUserAddr()] = user
+	s.userMapLock.Unlock()
 }
 
-func (server *Server) deleteOnlineUserMap(data interface{}) {
+func (s *Server) deleteOnlineUserMap(data interface{}) {
 	user := data.(*User)
-	server.userMapLock.Lock()
-	delete(server.onlineUserMap, user.GetUserAddr())
-	server.userMapLock.Unlock()
+	s.userMapLock.Lock()
+	delete(s.onlineUserMap, user.GetUserAddr())
+	s.userMapLock.Unlock()
 }
-func (server *Server) Start() {
+func (s *Server) Start() {
 	fmt.Println("Service is Listening:8899")
-	http.HandleFunc("/openai", server.handler)
+	http.HandleFunc("/openai", s.handler)
 	http.ListenAndServe(":8899", nil)
 }

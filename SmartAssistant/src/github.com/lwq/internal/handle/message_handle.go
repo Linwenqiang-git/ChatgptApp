@@ -28,7 +28,6 @@ var (
 )
 
 func init() {
-	log.Print("init handle_message")
 	if _messageRepo == nil {
 		var err error
 		_messageRepo, err = provider.GetMessageRepo()

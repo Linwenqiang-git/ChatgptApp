@@ -1,4 +1,4 @@
-from Utils.files import GgetFileEncoding
+from ...Utils.files import GetFileEncoding
 from tokens import Tokens
 import pandas as pd
 from embedding import Embedding
@@ -23,7 +23,7 @@ class CalculatingData:
 
     #将初始文件载入DataFrame
     def __load_source_file_to_dataframe(self) -> pd.DataFrame:
-        return pd.read_csv(self.__source_file_name,encoding= GgetFileEncoding(self.__source_file_name))
+        return pd.read_csv(self.__source_file_name,encoding= GetFileEncoding(self.__source_file_name))
 
     #生成嵌入向量文件
     def __generate_embedding_vector_file(self,df:pd.DataFrame):   

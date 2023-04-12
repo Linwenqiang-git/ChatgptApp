@@ -1,4 +1,4 @@
-from EmbeddingApp.Q_A.tokens import Tokens
+from ...EmbeddingApp.HelpCenterQA.tokens import Tokens
 import openai
 
 class CompletionCient:

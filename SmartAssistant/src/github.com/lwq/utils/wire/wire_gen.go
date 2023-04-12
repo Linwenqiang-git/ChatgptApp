@@ -17,6 +17,14 @@ import (
 
 // Injectors from wire.go:
 
+func GetConfigure() (configs.Configure, error) {
+	configure, err := configs.ProvideConfigure()
+	if err != nil {
+		return configs.Configure{}, err
+	}
+	return configure, nil
+}
+
 func GetCompletionClient() (completion.CompletionClient, error) {
 	configure, err := configs.ProvideConfigure()
 	if err != nil {
@@ -76,10 +84,12 @@ func GetMessageRepo() (repo.MessageRepo, error) {
 
 // wire.go:
 
-var openAiClientSet = wire.NewSet(configs.ProvideConfigure, chatgpt.ProvideOpenAiClient)
+var configureSet = wire.NewSet(configs.ProvideConfigure)
+
+var openAiClientSet = wire.NewSet(configureSet, chatgpt.ProvideOpenAiClient)
 
 var completionSet = wire.NewSet(openAiClientSet, completion.ProvideCompletionClient, completion.ProvideChatCompletionClient)
 
-var dbContextSet = wire.NewSet(configs.ProvideConfigure, data.ProvideDbContext)
+var dbContextSet = wire.NewSet(configureSet, data.ProvideDbContext)
 
 var repoSet = wire.NewSet(dbContextSet, repo.ProvideMessageRepo)

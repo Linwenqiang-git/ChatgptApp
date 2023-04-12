@@ -5,9 +5,12 @@ import (
 	"log"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	. "github.com/lwq/internal/handle"
 	. "github.com/lwq/internal/shared/consts"
+	. "github.com/lwq/third_party/ipc"
+	. "github.com/lwq/third_party/ipc/dto"
 	. "github.com/lwq/utils/event"
 )
 
@@ -19,17 +22,22 @@ type User struct {
 	sendChan         chan []byte
 	healthCheckChan  chan []byte
 	UserOfflineEvent *Event
+	requestIdList    []uuid.UUID
+	engine           *PyEngine
 }
 
-func CreatUser(conn *websocket.Conn, account string) *User {
+func NewUser(conn *websocket.Conn, account string) *User {
 	var user = &User{
 		account:          account,
 		addr:             conn.RemoteAddr().String(),
 		wsConn:           conn,
 		sendChan:         make(chan []byte),
 		healthCheckChan:  make(chan []byte),
+		requestIdList:    make([]uuid.UUID, 0),
 		UserOfflineEvent: NewEvent(),
+		engine:           NewEngine(),
 	}
+	user.engine.OnMsgReveiveEvent.AddEventHandler("OnMsgReveive", user.recvEngineMessage)
 	return user
 }
 
@@ -65,6 +73,8 @@ func (user *User) recvMessage() {
 			log.Printf("Recv [%s] text msg: %s\n", user.account, string(byteMsg))
 			if user.appModule == LiveChat {
 				go user.chatWithGpt(user.account, string(byteMsg))
+			} else {
+				go user.sendMsgToApps(string(byteMsg))
 			}
 		case websocket.BinaryMessage:
 			// 处理二进制消息
@@ -76,12 +86,38 @@ func (user *User) recvMessage() {
 		}
 	}
 }
+func (user *User) recvEngineMessage(data interface{}) {
+	rep := data.(IpcResponse)
+	log.Println("user reveMsg:", rep)
+	if rep.Code == 500 {
+		user.sendChan <- []byte("engine err:" + rep.ErrorMsg)
+		return
+	}
+	for i, id := range user.requestIdList {
+		if id == rep.ResponseId {
+			user.sendChan <- []byte(rep.Message)
+			user.requestIdList = append(user.requestIdList[:i], user.requestIdList[i+1:]...)
+			user.sendChan <- []byte("end")
+			break
+		}
+	}
+}
 
 func (user *User) chatWithGpt(userName string, message string) {
 	err := HandleWsMessgae(user.account, user.sendChan, message)
 	if err != nil {
 		log.Println(err.Error())
 	}
+}
+
+func (user *User) sendMsgToApps(message string) {
+	request := IpcRequest{
+		Id:      uuid.New(),
+		Module:  user.appModule,
+		Message: message,
+	}
+	user.requestIdList = append(user.requestIdList, request.Id)
+	user.engine.SendRequest(request)
 }
 
 // 发送消息
