@@ -73,11 +73,44 @@ func login() (*websocket.Conn, error) {
 	}
 	conn.SetPongHandler(func(appdata string) error {
 		lastHealthTime = time.Now()
-		//log.Printf("recv pong")
 		return nil
 	})
+	log.Println("connect to server:local:8899")
 	welcome(conn)
 	return conn, nil
+}
+func welcome(conn *websocket.Conn) AppModule {
+	fmt.Println(`┌───────────────────────────────┐`)
+	fmt.Println(`│                               │`)
+	fmt.Println(`│      欢迎使用大G助手！       │`)
+	fmt.Println(`│                               │`)
+	fmt.Println(`│       请选择交互模式：        │`)
+	fmt.Println(`│                               │`)
+	fmt.Println(`│        1. 帮助中心           │`)
+	fmt.Println(`│        2. 需求整理           │`)
+	fmt.Println(`│        3. 在线聊天           │`)
+	fmt.Println(`│                               │`)
+	fmt.Println(`└───────────────────────────────┘`)
+
+	optionList := GetModuleOption()
+	input := bufio.NewScanner(os.Stdin)
+	for input.Scan() {
+		option, err := strconv.Atoi(input.Text())
+		if err != nil {
+			log.Print("Unrecognized pattern, please try again")
+			continue
+		}
+		for _, validOption := range optionList {
+			if AppModule(option) == validOption {
+				optionBytes := make([]byte, 4)
+				binary.LittleEndian.PutUint32(optionBytes, uint32(option))
+				conn.WriteMessage(websocket.BinaryMessage, optionBytes)
+				return validOption
+			}
+		}
+		log.Print("Unrecognized pattern, please try again")
+	}
+	return Unknown
 }
 
 func releaseAllChannel() {
@@ -190,38 +223,4 @@ func readInput(conn *websocket.Conn) {
 			continue
 		}
 	}
-}
-
-func welcome(conn *websocket.Conn) AppModule {
-	fmt.Println(`┌───────────────────────────────┐`)
-	fmt.Println(`│                               │`)
-	fmt.Println(`│      欢迎使用大G助手！       │`)
-	fmt.Println(`│                               │`)
-	fmt.Println(`│       请选择交互模式：        │`)
-	fmt.Println(`│                               │`)
-	fmt.Println(`│        1. 帮助中心           │`)
-	fmt.Println(`│        2. 需求整理           │`)
-	fmt.Println(`│        3. 在线聊天           │`)
-	fmt.Println(`│                               │`)
-	fmt.Println(`└───────────────────────────────┘`)
-
-	optionList := GetModuleOption()
-	input := bufio.NewScanner(os.Stdin)
-	for input.Scan() {
-		option, err := strconv.Atoi(input.Text())
-		if err != nil {
-			log.Print("Unrecognized pattern, please try again")
-			continue
-		}
-		for _, validOption := range optionList {
-			if AppModule(option) == validOption {
-				optionBytes := make([]byte, 4)
-				binary.LittleEndian.PutUint32(optionBytes, uint32(option))
-				conn.WriteMessage(websocket.BinaryMessage, optionBytes)
-				return validOption
-			}
-		}
-		log.Print("Unrecognized pattern, please try again")
-	}
-	return Unknown
 }

@@ -9,9 +9,9 @@ import (
 	"sync"
 
 	. "github.com/lwq/third_party/ipc/dto"
-	. "github.com/lwq/third_party/ipc/process_manager"
 	. "github.com/lwq/utils/convert"
 	. "github.com/lwq/utils/event"
+	. "github.com/lwq/utils/process_manager"
 	provider "github.com/lwq/utils/wire"
 )
 

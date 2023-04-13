@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/gorilla/websocket"
+	. "github.com/lwq/utils/process_manager"
 )
 
 type Server struct {
@@ -24,6 +25,7 @@ var upgrader = websocket.Upgrader{
 }
 
 func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
+	log.Println("handle connect...")
 	auth := r.Header.Get("Authorization")
 	if auth == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -44,15 +46,15 @@ func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) parseBasicAuth(auth string) (string, string, error) {
 	if !strings.HasPrefix(auth, "Basic ") {
-		return "", "", fmt.Errorf("Invalid authorization header")
+		return "", "", fmt.Errorf("invalid authorization header")
 	}
 	payload, err := base64.StdEncoding.DecodeString(auth[6:])
 	if err != nil {
-		return "", "", fmt.Errorf("Invalid authorization header")
+		return "", "", fmt.Errorf("invalid authorization header")
 	}
 	pair := strings.SplitN(string(payload), ":", 2)
 	if len(pair) != 2 {
-		return "", "", fmt.Errorf("Invalid authorization header")
+		return "", "", fmt.Errorf("invalid authorization header")
 	}
 	return pair[0], pair[1], nil
 }
@@ -70,7 +72,14 @@ func (s *Server) deleteOnlineUserMap(data interface{}) {
 	s.userMapLock.Unlock()
 }
 func (s *Server) Start() {
-	fmt.Println("Service is Listening:8899")
 	http.HandleFunc("/openai", s.handler)
-	http.ListenAndServe(":8899", nil)
+	err := http.ListenAndServe(":8899", nil)
+	if err != nil {
+		processManager := NewProcesManager()
+		err = processManager.Kill(8899)
+		if err != nil {
+			panic(err)
+		}
+	}
+	fmt.Println("Service is Listening:8899")
 }

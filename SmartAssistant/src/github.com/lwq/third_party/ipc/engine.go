@@ -41,7 +41,8 @@ type PyEngine struct {
 
 func NewEngine() *PyEngine {
 	once.Do(func() {
-		interpreterPath := "././Apps/app_interpreter.py"
+		//todo:路径获取不优雅
+		interpreterPath := "././AppModule/app_interpreter.py"
 		absPyInterpreterPath, err := filepath.Abs(interpreterPath)
 		if err != nil {
 			panic(err)

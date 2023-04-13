@@ -69,9 +69,9 @@ func (user *User) recvMessage() {
 		switch messageType {
 		case websocket.TextMessage:
 			// 处理文本消息
-			//chat with gpt
 			log.Printf("Recv [%s] text msg: %s\n", user.account, string(byteMsg))
 			if user.appModule == LiveChat {
+				//chat with gpt
 				go user.chatWithGpt(user.account, string(byteMsg))
 			} else {
 				go user.sendMsgToApps(string(byteMsg))

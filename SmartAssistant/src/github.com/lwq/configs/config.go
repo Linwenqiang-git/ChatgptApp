@@ -28,7 +28,7 @@ func ProvideConfigure() (Configure, error) {
 	if absPath == "" {
 		panic("get project path err")
 	}
-	cfg, err := ini.Load(absPath + "/configurations.ini")
+	cfg, err := ini.Load(absPath + "/appsettings.ini")
 	if err != nil {
 		panic(err)
 	}
