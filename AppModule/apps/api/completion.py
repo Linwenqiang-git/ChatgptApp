@@ -1,5 +1,4 @@
 from .tokens import Tokens
-from .api_keys import set_api_key
 import openai
 
 class Completion:
@@ -11,7 +10,6 @@ class Completion:
         'gpt-3.5-turbo':'gpt-3.5-turbo'
     }
     def __init__(self):
-        set_api_key()
         pass
     
     def create_completion(self,prompt:str,**kwargs) -> dict:

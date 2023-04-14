@@ -1,6 +1,6 @@
 from .embedding_app.helpcenter_qa.main import main as HelpCenterQA
 from .embedding_app.demand_classification.main import main as DemandClassification
-from apps.api.api_keys import set_openai_key
+from apps.api.api_keys import set_api_key
 from utils.logger import logger
 
 _moduleDic = {
@@ -24,9 +24,7 @@ def process_request(request :dict) -> dict:
         response["ErrorMsg"] = "不支持的模式"    
     elif module == 0:
         #set openai key
-        set_openai_key(request_msg)
-        logger.info("set openai key success")
-        pass
+        set_api_key(request_msg)                
     elif request_msg == "":
         response["Code"] = 500
         response["ErrorMsg"] = "消息不能为空"    

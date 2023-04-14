@@ -21,7 +21,7 @@ def main():
         # 接收响应        
         try:   
             logger.info("waiting info...")
-            request = robot.recv()                
+            request = robot.recv()                            
             if request == None:
                 logger.info(f"receive empty info")             
                 continue

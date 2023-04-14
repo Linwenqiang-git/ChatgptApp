@@ -60,8 +60,7 @@ class PipeClientLinux(PipeClientBase):
             if size_bytes is None:
                 return None
             #服务端按照大端字节写入，对应这边使用>i解析
-            size, = struct.unpack('>i', size_bytes) 
-            logger.info(f"read head length:{size}")
+            size, = struct.unpack('>i', size_bytes)             
             content_bytes = self._read_data(size)
             if content_bytes is None:
                 return None

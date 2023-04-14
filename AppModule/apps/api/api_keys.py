@@ -1,8 +1,6 @@
 import openai
+from  utils.logger import logger
 
-_openAiKey = ""
-def set_api_key():       
-    openai.api_key = _openAiKey
-
-def set_openai_key(api_key):
-    _openAiKey = api_key
+def set_api_key(api_key):         
+    openai.api_key = api_key
+    logger.info(f"set openai key success:{api_key}")    
