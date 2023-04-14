@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"strconv"
 
-	"gopkg.in/ini.v1"
+	"github.com/spf13/viper"
 )
 
 type IpcServerSetting struct {
@@ -14,7 +14,7 @@ type IpcServerSetting struct {
 	fd   string
 }
 
-func (s *IpcServerSetting) GetConnetInfo() (protocol string, address string) {
+func (s *IpcServerSetting) GetConnectInfo() (protocol string, address string) {
 	sysType := runtime.GOOS
 	if sysType == "windows" {
 		protocol = "tcp"
@@ -30,13 +30,13 @@ func (s *IpcServerSetting) GetPort() (int, error) {
 	if sysType == "windows" {
 		return s.port, nil
 	}
-	return 0, errors.New("No listening port is required.")
+	return 0, errors.New("no listening port is required")
 }
 
-func NewIpcServerSetting(section *ini.Section) *IpcServerSetting {
+func NewIpcServerSetting() *IpcServerSetting {
 	return &IpcServerSetting{
-		addr: section.Key("addr").String(),
-		port: section.Key("port").MustInt(),
-		fd:   section.Key("fd").String(),
+		addr: viper.GetString("ipc_server.addr"),
+		port: viper.GetInt("ipc_server.port"),
+		fd:   viper.GetString("ipc_server.fd"),
 	}
 }

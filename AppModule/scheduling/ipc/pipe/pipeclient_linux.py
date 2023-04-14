@@ -16,11 +16,14 @@ class PipeClientLinux(PipeClientBase):
         self._sock.connect(self._address)        
 
     def _read_data(self, recv_size):
-        try:
+        # 检查 recv_size 是否为正整数
+        if recv_size <= 0:
+            raise ValueError(f"recv_size must be a positive integer:{recv_size}")
+        try:            
             body_part=self._sock.recv(recv_size)
             return body_part
-        except:
-            print('_read_data except')
+        except Exception as e:
+            logger.error(f'_read_data except:{e}')
             return None
         
     def _write_data(self, message):
@@ -39,7 +42,6 @@ class PipeClientLinux(PipeClientBase):
             content = json.dumps(obj)                
             content_bytes = content.encode('utf-8')            
             #以4字节写入流
-            logger.info(len(content_bytes))
             buf = struct.pack('i', len(content_bytes))
             suc = self._write_data(buf)
             if not suc:
@@ -53,16 +55,20 @@ class PipeClientLinux(PipeClientBase):
             return False
 
     def read(self):
-        size_bytes = self._read_data(4)
-        if size_bytes is None:
-            return None
-        size, = struct.unpack('i', size_bytes)
-        content_bytes = self._read_data(size)
-
-        if content_bytes is None:
-            return None
-        content = content_bytes.decode('utf-8')
-        return json.loads(content)
+        try:
+            size_bytes = self._read_data(4)
+            if size_bytes is None:
+                return None
+            #服务端按照大端字节写入，对应这边使用>i解析
+            size, = struct.unpack('>i', size_bytes) 
+            logger.info(f"read head length:{size}")
+            content_bytes = self._read_data(size)
+            if content_bytes is None:
+                return None
+            content = content_bytes.decode('utf-8')
+            return json.loads(content)
+        except Exception as e:
+            logger.error(f"read data err:{e}")
 
         
     def close(self):

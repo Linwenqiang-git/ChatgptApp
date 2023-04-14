@@ -17,6 +17,13 @@ func ExitIpcRequest() IpcRequest {
 		IsExit: true,
 	}
 }
+func OpenaiKeyIpcRequest(openaiKey string) IpcRequest {
+	return IpcRequest{
+		Id:      uuid.New(),
+		Module:  OpenaiKey,
+		Message: openaiKey, //直接将api key发送，python端接收后无法解析
+	}
+}
 
 type IpcResponse struct {
 	ResponseId uuid.UUID

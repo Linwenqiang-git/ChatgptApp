@@ -4,7 +4,7 @@ try:
     from scheduling.ipc import robot
     from utils.logger import logger
     from utils.ipc_response import ExceptionResponse
-    from apps.app_manage import sendRequet
+    from apps.app_manage import process_request
 except Exception as e:
     logger.error(f"import module err:{e}")
     sys.exit(0)
@@ -27,8 +27,9 @@ def main():
                 continue
             logger.info(f"receive info：{request}")         
             if request['IsExit'] == True:
+                logger.info("reveive exit message...")
                 break            
-            response = sendRequet(request)  
+            response = process_request(request)  
             logger.info(f"response info：{response}")    
             robot.send(response) 
         except socket.error as e:
@@ -36,6 +37,7 @@ def main():
             break
         except Exception as e:            
             if str(e) == "read msg is None":
+                logger.info("read msg is None")
                 break
             else:
                 logger.error(f"handle message err:{e}")

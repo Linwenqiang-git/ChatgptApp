@@ -12,6 +12,9 @@ func IntToBytes(n int) []byte {
 		panic(err)
 	}
 	return buf.Bytes()
+	// b := make([]byte, 4)
+	// binary.BigEndian.PutUint32(b, uint32(n))
+	// return b
 }
 func BytesToInt(b []byte) int32 {
 	var i int32

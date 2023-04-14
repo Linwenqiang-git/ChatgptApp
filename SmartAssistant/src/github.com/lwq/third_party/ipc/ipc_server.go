@@ -8,6 +8,7 @@ import (
 	"net"
 	"sync"
 
+	. "github.com/lwq/configs"
 	. "github.com/lwq/third_party/ipc/dto"
 	. "github.com/lwq/utils/convert"
 	. "github.com/lwq/utils/event"
@@ -33,12 +34,18 @@ type IpcServer struct {
 	ln                net.Listener
 	OnMsgReveiveEvent *Event
 	wg                sync.WaitGroup
+	config            Configure
 }
 
 func NewIpcServer() *IpcServer {
+	config, err := provider.GetConfigure()
+	if err != nil {
+		panic(err)
+	}
 	return &IpcServer{
 		state:             UnInit,
 		OnMsgReveiveEvent: NewEvent(),
+		config:            config,
 	}
 }
 
@@ -90,12 +97,14 @@ func (s *IpcServer) SendRequest(request IpcRequest) error {
 		return err
 	}
 	s.lock.Lock() //防止多用户并发发送消息时，head和body不能匹配的情况
-	err1 := s.writeByte(IntToBytes(len(jsonData)))
-	if err1 != nil {
+	err = s.writeByte(IntToBytes(len(jsonData)))
+	if err != nil {
+		s.lock.Unlock()
 		return err
 	}
-	err2 := s.writeByte(jsonData)
-	if err2 != nil {
+	err = s.writeByte(jsonData)
+	if err != nil {
+		s.lock.Unlock()
 		return err
 	}
 	s.lock.Unlock()
@@ -111,10 +120,11 @@ func (s *IpcServer) writeByte(buf []byte) error {
 	if s.conn == nil {
 		return errors.New("ipcserver conn is nil")
 	}
-	_, err := s.conn.Write(buf)
+	n, err := s.conn.Write(buf)
 	if err != nil {
 		return err
 	}
+	fmt.Println("write data res:", n)
 	return nil
 }
 func (s *IpcServer) readByte(count int) ([]byte, error) {
@@ -127,15 +137,11 @@ func (s *IpcServer) killListener(port int) {
 	processManager.Kill(port)
 }
 func (s *IpcServer) createListen() (net.Listener, error) {
-	config, err := provider.GetConfigure()
-	if err != nil {
-		panic(err)
-	}
-	port, err := config.IpcServerSetting.GetPort()
+	port, err := s.config.IpcServerSetting.GetPort()
 	if err == nil {
 		s.killListener(port)
 	}
-	protocol, address := config.IpcServerSetting.GetConnetInfo()
+	protocol, address := s.config.IpcServerSetting.GetConnectInfo()
 	return net.Listen(protocol, address)
 }
 
@@ -169,6 +175,13 @@ func (s *IpcServer) waitForConnect() {
 		fmt.Println("客户端已连接:", conn.RemoteAddr())
 		// 处理连接
 		go s.handleConnection()
+		//发送openai key
+		request := OpenaiKeyIpcRequest(s.config.OpenaiSetting.GetOpenaiSetting())
+		fmt.Println("openai key request:", request)
+		err = s.SendRequest(request)
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 

@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"gopkg.in/ini.v1"
+	"github.com/spf13/viper"
 )
 
 type MysqlSetting struct {
@@ -36,14 +36,14 @@ func (s *MysqlSetting) GetConnectInfo() string {
 	return dsnBuilder.String()
 }
 
-func NewMysqlSetting(section *ini.Section) *MysqlSetting {
+func NewMysqlSetting() *MysqlSetting {
 	return &MysqlSetting{
-		ip:       section.Key("ip").String(),
-		port:     section.Key("port").MustInt(),
-		user:     section.Key("user").String(),
-		password: section.Key("password").String(),
-		database: section.Key("database").String(),
-		charset:  section.Key("charset").String(),
-		show_sql: section.Key("show_sql").MustBool(),
+		ip:       viper.GetString("mysql.ip"),
+		port:     viper.GetInt("mysql.port"),
+		user:     viper.GetString("mysql.user"),
+		password: viper.GetString("mysql.password"),
+		database: viper.GetString("mysql.database"),
+		charset:  viper.GetString("mysql.charset"),
+		show_sql: viper.GetBool("mysql.show_sql"),
 	}
 }

@@ -110,7 +110,7 @@ func welcome(conn *websocket.Conn) AppModule {
 		}
 		log.Print("Unrecognized pattern, please try again")
 	}
-	return Unknown
+	return LiveChat
 }
 
 func releaseAllChannel() {

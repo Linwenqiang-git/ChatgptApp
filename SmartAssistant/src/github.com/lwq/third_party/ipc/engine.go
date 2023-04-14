@@ -99,14 +99,13 @@ func (p *PyEngine) startEngine() {
 	p.setStatus(Running)
 	go p.monitorEngine()
 	log.Println("python engine created.")
-
 	err = cmd.Wait()
 	if err != nil {
-		if p.engineStatus == Running {
-			//restart engine
-			log.Println("engine abnormal exit:", err, " restarting...")
-			p.restartEngineChan <- 1
-		}
+		log.Println("engine abnormal exit:", err, " restarting...")
+	}
+	if p.engineStatus == Running {
+		//restart engine
+		p.restartEngineChan <- 1
 	}
 	if p.engineStatus == Stop {
 		//exit

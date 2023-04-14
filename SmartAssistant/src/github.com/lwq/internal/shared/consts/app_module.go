@@ -3,13 +3,13 @@ package consts
 type AppModule int
 
 const (
-	Unknown AppModule = iota
+	OpenaiKey AppModule = iota
 	HelpCenter
 	ReqSort
 	LiveChat
 )
 
-var moduleOptions = []AppModule{HelpCenter, ReqSort, LiveChat}
+var moduleOptions = []AppModule{OpenaiKey,HelpCenter, ReqSort, LiveChat}
 
 func GetModuleOption() []AppModule {
     return moduleOptions
