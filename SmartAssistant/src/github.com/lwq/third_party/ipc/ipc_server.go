@@ -177,7 +177,6 @@ func (s *IpcServer) waitForConnect() {
 		go s.handleConnection()
 		//发送openai key
 		request := OpenaiKeyIpcRequest(s.config.OpenaiSetting.GetOpenaiSetting())
-		fmt.Println("openai key request:", request)
 		err = s.SendRequest(request)
 		if err != nil {
 			panic(err)

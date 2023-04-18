@@ -5,7 +5,6 @@ import (
 	"log"
 	"sync"
 	"time"
-	"unsafe"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -150,15 +149,14 @@ func (user *User) healthCheck(appdata string) error {
 }
 
 func (user *User) offline() {
-	log.Printf("[%s] OffLine", user.account)
 	//remove handle
-	f := user.onRecvEngineMessageHandle
-	user.engine.OnMsgReveiveEvent.RemoveEventHandler(onMsgReveiveEventName, uintptr(unsafe.Pointer(&f)))
+	user.engine.OnMsgReveiveEvent.RemoveEventHandler(onMsgReveiveEventName, user.onRecvEngineMessageHandle)
 	//publish offline event
 	user.UserOfflineEvent.Invoke(user)
 	user.wsConn.Close()
 	close(user.offLineChan)
 	user.wg.Wait()
+	log.Printf("[%s] OffLine", user.account)
 }
 
 // 事件移除以后，讲不会写入消息
