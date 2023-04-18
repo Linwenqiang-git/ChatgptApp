@@ -3,7 +3,9 @@ package service
 import (
 	"encoding/binary"
 	"log"
+	"sync"
 	"time"
+	"unsafe"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -14,15 +16,18 @@ import (
 	. "github.com/lwq/utils/event"
 )
 
+var onMsgReveiveEventName string = "OnMsgReveive"
+
 type User struct {
 	account          string
 	addr             string
 	wsConn           *websocket.Conn
 	appModule        AppModule
 	sendChan         chan []byte
-	healthCheckChan  chan []byte
+	offLineChan      chan struct{}
 	UserOfflineEvent *Event
 	requestIdList    []uuid.UUID
+	wg               sync.WaitGroup
 	engine           *PyEngine
 }
 
@@ -32,15 +37,16 @@ func NewUser(conn *websocket.Conn, account string) *User {
 		addr:             conn.RemoteAddr().String(),
 		wsConn:           conn,
 		sendChan:         make(chan []byte),
-		healthCheckChan:  make(chan []byte),
+		offLineChan:      make(chan struct{}),
 		requestIdList:    make([]uuid.UUID, 0),
 		UserOfflineEvent: NewEvent(),
 		engine:           NewEngine(),
 	}
-	user.engine.OnMsgReveiveEvent.AddEventHandler("OnMsgReveive", user.recvEngineMessage)
+	user.engine.OnMsgReveiveEvent.AddEventHandler(onMsgReveiveEventName, user.onRecvEngineMessageHandle)
 	return user
 }
 
+// 公共方法
 func (user *User) GetUserAddr() string {
 	return user.addr
 }
@@ -50,17 +56,23 @@ func (user *User) GetUserName() string {
 func (user *User) GetUserConn() *websocket.Conn {
 	return user.wsConn
 }
+func (user *User) Online() {
+	log.Printf("[%s] Online", user.account)
+	user.wsConn.SetPingHandler(user.healthCheck)
+	go user.recvMessage()
+	go user.sendMessage()
+	user.wg.Add(2)
+}
 
 // 接收消息
 func (user *User) recvMessage() {
 	defer user.offline()
+	defer user.wg.Done()
 	for {
 		messageType, byteMsg, err := user.wsConn.ReadMessage()
 		if err != nil {
-			if websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+			if websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) || websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("Connection closed: %v\n", err)
-			} else if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Println("Conn has been closed", err)
 			} else {
 				log.Printf("Read error: %v\n", err)
 			}
@@ -86,7 +98,71 @@ func (user *User) recvMessage() {
 		}
 	}
 }
-func (user *User) recvEngineMessage(data interface{}) {
+
+func (user *User) chatWithGpt(userName string, message string) {
+	user.wg.Add(1)
+	defer user.wg.Done()
+	//读取消息异常以后也不会写入
+	err := HandleWsMessgae(user.account, user.sendChan, message)
+	if err != nil {
+		log.Println(err.Error())
+	}
+}
+
+func (user *User) sendMsgToApps(message string) {
+	user.wg.Add(1)
+	defer user.wg.Done()
+	request := IpcRequest{
+		Id:      uuid.New(),
+		Module:  user.appModule,
+		Message: message,
+	}
+	user.requestIdList = append(user.requestIdList, request.Id)
+	user.engine.SendRequest(request)
+}
+
+// 发送消息
+func (user *User) sendMessage() {
+	defer user.wg.Done()
+	for {
+		select {
+		case buf, ok := <-user.sendChan:
+			if !ok {
+				return
+			}
+			err := user.wsConn.WriteMessage(websocket.TextMessage, buf)
+			if err != nil {
+				log.Println("Send Msg Error：", err)
+			}
+		case <-user.offLineChan:
+			close(user.sendChan)
+			return
+		}
+	}
+}
+func (user *User) healthCheck(appdata string) error {
+	err := user.wsConn.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(time.Second))
+	if err != nil {
+		log.Printf("Send %s Pong Error：%e", user.account, err)
+		return err
+	}
+	return nil
+}
+
+func (user *User) offline() {
+	log.Printf("[%s] OffLine", user.account)
+	//remove handle
+	f := user.onRecvEngineMessageHandle
+	user.engine.OnMsgReveiveEvent.RemoveEventHandler(onMsgReveiveEventName, uintptr(unsafe.Pointer(&f)))
+	//publish offline event
+	user.UserOfflineEvent.Invoke(user)
+	user.wsConn.Close()
+	close(user.offLineChan)
+	user.wg.Wait()
+}
+
+// 事件移除以后，讲不会写入消息
+func (user *User) onRecvEngineMessageHandle(data interface{}) {
 	rep := data.(IpcResponse)
 	log.Println("user reveMsg:", rep)
 	if rep.Code == 500 {
@@ -101,60 +177,4 @@ func (user *User) recvEngineMessage(data interface{}) {
 			break
 		}
 	}
-}
-
-func (user *User) chatWithGpt(userName string, message string) {
-	err := HandleWsMessgae(user.account, user.sendChan, message)
-	if err != nil {
-		log.Println(err.Error())
-	}
-}
-
-func (user *User) sendMsgToApps(message string) {
-	request := IpcRequest{
-		Id:      uuid.New(),
-		Module:  user.appModule,
-		Message: message,
-	}
-	user.requestIdList = append(user.requestIdList, request.Id)
-	user.engine.SendRequest(request)
-}
-
-// 发送消息
-func (user *User) sendMessage() {
-	defer user.offline()
-	for {
-		select {
-		case buf := <-user.sendChan:
-			err := user.wsConn.WriteMessage(websocket.TextMessage, buf)
-			if err != nil {
-				log.Println("Send Msg Error：", err)
-				return
-			}
-		case <-user.healthCheckChan:
-			err := user.wsConn.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(time.Second))
-			if err != nil {
-				log.Println("Send Pong Error：", err)
-				return
-			}
-		}
-	}
-}
-func (user *User) healthCheck(appdata string) error {
-	user.healthCheckChan <- []byte("1")
-	return nil
-}
-
-func (user *User) Online() {
-	log.Printf("[%s] Online", user.account)
-	user.wsConn.SetPingHandler(user.healthCheck)
-	go user.recvMessage()
-	go user.sendMessage()
-}
-
-func (user *User) offline() {
-	log.Printf("[%s] OffLine", user.account)
-	user.wsConn.Close()
-	//publish offline event
-	user.UserOfflineEvent.Invoke(user)
 }

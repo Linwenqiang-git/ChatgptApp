@@ -2,6 +2,7 @@ package event
 
 import (
 	"errors"
+	"reflect"
 	"sync"
 )
 
@@ -30,21 +31,31 @@ func (e *Event) AddEventHandler(eventName string, eventHandler EventHandler) (er
 
 // 执行2023年3月20日09:21:50
 func (e *Event) Invoke(data interface{}) {
+	e.lock.Lock()
 	//顺序调度事件
 	for _, handlers := range e.eventHandlers {
 		for _, handler := range handlers {
 			handler(data)
 		}
 	}
+	e.lock.Unlock()
 }
 
 // 移除事件处理
-func (e *Event) RemoveEventHandler(eventName string) (err error) {
-	_, ok := e.eventHandlers[eventName]
+func (e *Event) RemoveEventHandler(eventName string, ptr uintptr) (err error) {
+	e.lock.Lock()
+	eventList, ok := e.eventHandlers[eventName]
 	if !ok {
 		return errors.New(eventName + " Not registered ")
 	}
-	delete(e.eventHandlers, eventName)
+	for i, event := range eventList {
+		if reflect.ValueOf(event).Pointer() == ptr {
+			eventList = append(eventList[:i], eventList[i+1:]...)
+			e.eventHandlers[eventName] = eventList
+			break
+		}
+	}
+	e.lock.Unlock()
 	return nil
 }
 

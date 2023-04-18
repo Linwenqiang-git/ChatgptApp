@@ -21,13 +21,13 @@ def process_request(request :dict) -> dict:
     }   
     if module == -1:
         response["Code"] = 500
-        response["ErrorMsg"] = "不支持的模式"    
-    elif module == 0:
-        #set openai key
-        set_api_key(request_msg)                
+        response["ErrorMsg"] = "不支持的模式"                       
     elif request_msg == "":
         response["Code"] = 500
         response["ErrorMsg"] = "消息不能为空"    
+    elif module == 0:
+        #set openai key
+        set_api_key(request_msg) 
     else:
         try:            
             main = _moduleDic[module]
